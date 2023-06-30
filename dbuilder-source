@@ -1,0 +1,35 @@
+#!/bin/bash
+
+save_source_path=""
+config_file="dbuilder.conf"
+
+get_source()
+{
+    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
+    if [ -z "$save_source_path" ]; then
+        echo "代码保存路径为空，请输入数据 (例: /tmp/packages): "
+        read save_source_path
+        sed -i 's|^SAVE_SOURCE_PATH=.*|SAVE_SOURCE_PATH='"${save_source_path}"'|' "$config_file"
+    fi
+
+    # 创建文件夹
+    [ ! -d $save_source_path ] && mkdir -p $save_source_path
+
+    version=$(grep '^PACKAGE_VERSION=' "$config_file" | cut -d '=' -f2)
+    if [ -z "$version" ]; then
+        echo "发行版为空，请输入数据 (例: [ buster ] [ buster-backports ] [ bullseye ] [ bookworm ] [ sid ]): "
+        read version
+        sed -i 's|^PACKAGE_VERSION=.*|PACKAGE_VERSION='"${version}"'|' "$config_file"
+    fi
+    url="https://packages.debian.org/${version}/${2}"
+    curl -s $url > temp.html
+
+    psource=$(cat temp.html | sed -n 's/.*<a[^>]*>\([^<]*\)<\/a>.*/\1/p')
+    echo $psource
+}   
+
+case $1 in
+    get)
+        get_source "$@"
+        ;;
+esac

@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# 何命令失败（退出状态非0），则脚本会终止执行
+set -o errexit
+# 尝试使用未设置值的变量，脚本将停止执行
+set -o nounset
+
+show_help() {
+	cat << EOF
+Choose one of the available commands:
+
+EOF
+}
+
+# 没有添加参数时展示执行help,获取命令列表
+if [ $# -eq 0 ]; then
+    show_help
+    exit
+fi
+
+# 获取dbuilder指令所在路径
+dbuilder_path="$(dirname "${0}")"
+# 保存脚本的第一个参数
+dbuilder_command="${1}"
+# 向左移动参数，移除第一个参数
+shift
+
+case "${dbuilder_command}" in
+    source)
+        "${dbuilder_path}/dbuilder-source" "$@"
+        ;;
+    help | --help | -h)
+        show_help
+        exit 0
+        ;;
+    *)
+        printf >&2 "Error: invalid command\n"
+        show_help
+        exit 1
+esac
