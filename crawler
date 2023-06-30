@@ -1,0 +1,31 @@
+#!/usr/bin/python3
+
+import requests
+import sys
+import parsel
+import json
+
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+}
+
+
+data = {}
+# 如果数据库没有数据，就进行爬取
+url = sys.argv[1]
+
+response = requests.get(url=url, headers=headers)
+selector = parsel.Selector(response.text)
+
+psource = selector.css('#psource a::text').get()
+description = selector.css('#pdesc h2::text').get()
+try:
+    purl = selector.css('#pmoreinfo ul')[1].css("li a::attr(href)")[0].get()
+except IndexError as e:
+    purl = ""
+
+data["psource"] = psource
+data["description"] = description
+data["purl"] = purl
+with open('data.json', 'w') as file:
+    json.dump(data, file)

@@ -22,10 +22,16 @@ get_source()
         sed -i 's|^PACKAGE_VERSION=.*|PACKAGE_VERSION='"${version}"'|' "$config_file"
     fi
     url="https://packages.debian.org/${version}/${2}"
-    curl -s $url > temp.html
+    
 
-    psource=$(cat temp.html | sed -n 's/.*<a[^>]*>\([^<]*\)<\/a>.*/\1/p')
-    echo $psource
+    python3 crawler $url
+    psource=$(cat data.json | jq -r '.psource')
+    description=$(cat data.json | jq -r '.description')
+    purl=$(cat data.json | jq -r '.purl')
+
+    pakcage_dir=$save_source_path/$psource
+    mkdir -p $pakcage_dir
+    cd $pakcage_dir && dget $purl
 }   
 
 case $1 in
