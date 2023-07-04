@@ -2,6 +2,9 @@
 
 save_source_path=""
 config_file="dbuilder.conf"
+psource=""
+description=""
+purl=""
 
 get_source()
 {
@@ -22,20 +25,56 @@ get_source()
         sed -i 's|^PACKAGE_VERSION=.*|PACKAGE_VERSION='"${version}"'|' "$config_file"
     fi
     url="https://packages.debian.org/${version}/${2}"
-    
 
-    python3 crawler $url
-    psource=$(cat data.json | jq -r '.psource')
-    description=$(cat data.json | jq -r '.description')
-    purl=$(cat data.json | jq -r '.purl')
+    # 调用Python脚本并将结果逐行存储在数组中
+    results=()
+    while IFS= read -r result; do
+        results+=("$result")
+    done < <(python3 crawler $url)
 
+    psource="${results[0]}"
+    description="${results[1]}"
+    purl="${results[2]}"
+
+    # 新建目录
     pakcage_dir=$save_source_path/$psource
     mkdir -p $pakcage_dir
-    cd $pakcage_dir && dget $purl
-}   
+    cd $pakcage_dir
+    dget $purl
+
+cat << EOF
+
+软件包名: ${2}
+源码包名: $psource
+描述: $description
+dsc下载链接: $purl
+EOF
+
+cat << EOF >> /tmp/repos.yml
+  - repo: $psource #main
+    group: deepin-sysdev-team
+    info: $description
+EOF
+}
+
+check_build_deps()
+{
+    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
+    version=$(grep '^PACKAGE_VERSION=' "$config_file" | cut -d '=' -f2)
+    pakcage_dir=$save_source_path/$psource
+    get_source "$@"
+    cd $pakcage_dir
+    dsc_file=$(basename $(ls ${pakcage_dir}/*.dsc))
+    dpkg-source -x $dsc_file $psource
+    cd $psource
+    sudo apt build-dep .
+}
 
 case $1 in
     get)
         get_source "$@"
+        ;;
+    deps)
+        check_build_deps "$@"
         ;;
 esac

@@ -24,8 +24,6 @@ try:
 except IndexError as e:
     purl = ""
 
-data["psource"] = psource
-data["description"] = description
-data["purl"] = purl
-with open('data.json', 'w') as file:
-    json.dump(data, file)
+print(psource)
+print(description)
+print(purl)
