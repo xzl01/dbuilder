@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# 何命令失败（退出状态非0），则脚本会终止执行
-set -o errexit
 # 尝试使用未设置值的变量，脚本将停止执行
 set -o nounset
 
@@ -19,7 +17,7 @@ init_config()
         sed -i 's|^GITHUB_ID=.*|GITHUB_ID='"${github_id}"'|' "$config_file"
     fi
 
-    if [ -f "/tmp/github_token" ]; then
+    if [ -e "/tmp/github_token" ]; then
         token=$(cat "/tmp/github_token")
     else
         echo "Github Token为空，请输入数据: "
@@ -38,8 +36,49 @@ fork_repo()
 
 }
 
+Preproces()
+{
+    init_config
+    source dbuilder-source get "${2}"
+
+    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
+    current_path=$(pwd)
+
+    # dsc存放的地址
+    dsc_dir=$save_source_path/$psource
+    cd $dsc_dir
+    dsc_file=$(basename $(ls ${dsc_dir}/*.dsc))
+    if [ ! -e "$psource" ]; then
+        dpkg-source -x $dsc_file "$psource"
+    fi
+    cd $psource
+    # 回退patch
+    quilt pop -af
+    #删除一些隐藏目录
+    rm -rf .{pc,github,git}
+    cd $current_path
+    
+    fork_repo "$@"
+
+    cd $dsc_dir
+    # clone代码
+    repo_url="git@github.com:${github_id}/${psource}.git"
+    if [ ! -e "repo" ]; then
+        git clone $repo_url repo
+    fi
+
+    source_path="$dsc_dir/$psource"
+    repo_path="$dsc_dir/repo"
+    cp -r $repo_path/.{git,github} $source_path
+    cp -r $repo_path/debian/deepin $source_path/debian
+    cd $current_path
+}
+
 case "$1" in
     fork)
         fork_repo "$@"
+        ;;
+    pre)
+        Preproces "$@"
         ;;
 esac

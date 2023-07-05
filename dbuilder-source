@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# 何命令失败（退出状态非0），则脚本会终止执行
-set -o errexit
 # 尝试使用未设置值的变量，脚本将停止执行
 set -o nounset
 
@@ -14,7 +12,7 @@ purl=""
 get_source()
 {
     save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
-    if [-z "$save_source_path" ]; then
+    if [ -z "$save_source_path" ]; then
         echo "代码保存路径为空，请输入数据 (例: /tmp/packages): "
         read save_source_path
         sed -i 's|^SAVE_SOURCE_PATH=.*|SAVE_SOURCE_PATH='"${save_source_path}"'|' "$config_file"
@@ -41,11 +39,16 @@ get_source()
     description="${results[1]}"
     purl="${results[2]}"
 
+    export $psource
+
     # 新建目录
-    pakcage_dir=$save_source_path/$psource
-    mkdir -p $pakcage_dir
-    cd $pakcage_dir
+    dsc_dir=$save_source_path/$psource
+    current_path=$(pwd)
+    mkdir -p $dsc_dir
+    cd $dsc_dir
     dget $purl
+
+    cd $current_path
 
 cat << EOF
 
@@ -64,15 +67,31 @@ EOF
 
 check_build_deps()
 {
+    get_source "$@"
+
     save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
     version=$(grep '^PACKAGE_VERSION=' "$config_file" | cut -d '=' -f2)
-    pakcage_dir=$save_source_path/$psource
-    get_source "$@"
-    cd $pakcage_dir
-    dsc_file=$(basename $(ls ${pakcage_dir}/*.dsc))
-    dpkg-source -x $dsc_file $psource
+    dsc_dir=$save_source_path/$psource
+    current_path=$(pwd)
+
+    cd $dsc_dir
+    dsc_file=$(basename $(ls ${dsc_dir}/*.dsc))
+    if [ ! -e "$psource" ]; then
+        dpkg-source -x $dsc_name "${psource}"
+    fi
+
     cd $psource
-    sudo apt build-dep .
+    result=$(sudo apt build-dep .)
+    
+    package_name=$(echo "$result" | grep -oP 'Depends: \K\S+')
+    # 将提取的包名添加到数组中
+    package_list=($package_name)
+    # 遍历打印数组中的包名
+    for package in "${package_list[@]}"; do
+        echo "$package"
+    done
+
+    cd $current_path
 }
 
 case $1 in
