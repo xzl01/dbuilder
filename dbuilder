@@ -29,6 +29,9 @@ case "${dbuilder_command}" in
     source)
         "${dbuilder_path}/dbuilder-source" "$@"
         ;;
+    hub)
+        "${dbuilder_path}/dbuilder-hub" "$@"
+        ;;
     help | --help | -h)
         show_help
         exit 0

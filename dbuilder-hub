@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# 何命令失败（退出状态非0），则脚本会终止执行
+set -o errexit
+# 尝试使用未设置值的变量，脚本将停止执行
+set -o nounset
+
+config_file="dbuilder.conf"
+github_id=""
+token=""
+
+init_config()
+{
+    github_id=$(grep '^GITHUB_ID=' "$config_file" | cut -d '=' -f2)
+
+    if [ -z "$github_id" ]; then
+        echo "Github ID为，请输入数据: "
+        read github_id
+        sed -i 's|^GITHUB_ID=.*|GITHUB_ID='"${github_id}"'|' "$config_file"
+    fi
+
+    if [ -f "/tmp/github_token" ]; then
+        token=$(cat "/tmp/github_token")
+    else
+        echo "Github Token为空，请输入数据: "
+        read token
+        echo "$token" >> /tmp/github_token
+    fi
+}
+
+fork_repo()
+{
+    init_config
+    url="https://api.github.com/repos/deepin-community/$2/forks"
+    curl -X POST \
+        -H "Authorization: token $token" \
+        $url
+
+}
+
+case "$1" in
+    fork)
+        fork_repo "$@"
+        ;;
+esac

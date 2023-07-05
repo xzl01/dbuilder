@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# 何命令失败（退出状态非0），则脚本会终止执行
+set -o errexit
+# 尝试使用未设置值的变量，脚本将停止执行
+set -o nounset
+
 save_source_path=""
 config_file="dbuilder.conf"
 psource=""
@@ -9,7 +14,7 @@ purl=""
 get_source()
 {
     save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
-    if [ -z "$save_source_path" ]; then
+    if [-z "$save_source_path" ]; then
         echo "代码保存路径为空，请输入数据 (例: /tmp/packages): "
         read save_source_path
         sed -i 's|^SAVE_SOURCE_PATH=.*|SAVE_SOURCE_PATH='"${save_source_path}"'|' "$config_file"
