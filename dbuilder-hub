@@ -74,11 +74,38 @@ Preproces()
     cd $current_path
 }
 
+diff_source()
+{
+    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
+    current_path=$(pwd)
+    # dsc存放的地址
+    dsc_dir=$save_source_path/$2
+    cd $dsc_dir
+    dsc_file=$(basename $(ls ${dsc_dir}/*.dsc))
+    if [ ! -e "$2" ]; then
+        dpkg-source -x $dsc_file "$2"
+    fi
+    cd $2
+    # 回退patch
+    quilt pop -af
+    #删除一些隐藏目录
+    rm -rf .{pc,github,git}
+    cd $current_path
+    source_path="$dsc_dir/$2"
+    repo_path="$dsc_dir/repo"
+    cp -r $repo_path/.{git,github} $source_path
+    cp -r $repo_path/debian/deepin $source_path/debian
+    cd $current_path
+}
+
 case "$1" in
     fork)
         fork_repo "$@"
         ;;
     pre)
         Preproces "$@"
+        ;;
+    diff)
+        diff_source "$@"
         ;;
 esac
