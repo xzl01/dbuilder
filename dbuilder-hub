@@ -36,7 +36,7 @@ fork_repo()
 
 }
 
-Preproces()
+preproces()
 {
     init_config
     source dbuilder-source get "${2}"
@@ -76,11 +76,15 @@ Preproces()
 
 diff_source()
 {
-    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
     current_path=$(pwd)
-    # dsc存放的地址
+    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
+
     dsc_dir=$save_source_path/$2
+    
+    # 创建文件夹
+    [ ! -d $dsc_dir ] && mkdir -p $dsc_dir
     cd $dsc_dir
+
     dsc_file=$(basename $(ls ${dsc_dir}/*.dsc))
     if [ ! -e "$2" ]; then
         dpkg-source -x $dsc_file "$2"
@@ -92,6 +96,12 @@ diff_source()
     rm -rf .{pc,github,git}
     cd $current_path
     source_path="$dsc_dir/$2"
+
+    cd $dsc_dir
+    # clone代码
+    if [ ! -e "repo" ]; then
+        git clone "$3" repo
+    fi
     repo_path="$dsc_dir/repo"
     cp -r $repo_path/.{git,github} $source_path
     cp -r $repo_path/debian/deepin $source_path/debian
@@ -103,7 +113,7 @@ case "$1" in
         fork_repo "$@"
         ;;
     pre)
-        Preproces "$@"
+        preproces "$@"
         ;;
     diff)
         diff_source "$@"
