@@ -8,6 +8,7 @@ config_file="dbuilder.conf"
 psource=""
 description=""
 purl=""
+psource_path=""
 
 get_source()
 {
@@ -38,17 +39,14 @@ get_source()
     psource="${results[0]}"
     description="${results[1]}"
     purl="${results[2]}"
+    psource_path=$save_source_path/$psource
 
-    export $psource
+    export $psource # 导出源码名
+    export $psource_path # 到处某个软件源码包的路径
 
-    # 新建目录
-    dsc_dir=$save_source_path/$psource
-    current_path=$(pwd)
-    mkdir -p $dsc_dir
-    cd $dsc_dir
+    mkdir -p $psource_path
+    cd $psource_path
     dget $purl
-
-    cd $current_path
 
 cat << EOF
 
@@ -94,11 +92,32 @@ check_build_deps()
     cd $current_path
 }
 
+# 进行预处理操作，回退patch，删除一些文件
+preproces()
+{
+    get_source "$@"
+
+    cd $psource_path
+    dsc_file=$(basename $(ls ${psource_path}/*.dsc))
+    if [ ! -e "$psource" ]; then
+        dpkg-source -x $dsc_file "$psource"
+    fi
+    # 进入解压后的源代码包
+    cd $psource
+    # 回退patch
+    quilt pop -af
+    #删除一些隐藏目录
+    rm -rf .{pc,github,git}
+}
+
 case $1 in
     get)
         get_source "$@"
         ;;
     deps)
         check_build_deps "$@"
+        ;;
+    pre)
+        preproces "$@"
         ;;
 esac

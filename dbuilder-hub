@@ -36,86 +36,55 @@ fork_repo()
 
 }
 
-preproces()
-{
-    init_config
-    source dbuilder-source get "${2}"
-
-    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
-    current_path=$(pwd)
-
-    # dsc存放的地址
-    dsc_dir=$save_source_path/$psource
-    cd $dsc_dir
-    dsc_file=$(basename $(ls ${dsc_dir}/*.dsc))
-    if [ ! -e "$psource" ]; then
-        dpkg-source -x $dsc_file "$psource"
-    fi
-    cd $psource
-    # 回退patch
-    quilt pop -af
-    #删除一些隐藏目录
-    rm -rf .{pc,github,git}
-    cd $current_path
-    
-    fork_repo "$@"
-
-    cd $dsc_dir
-    # clone代码
-    repo_url="git@github.com:${github_id}/${psource}.git"
-    if [ ! -e "repo" ]; then
-        git clone $repo_url repo
-    fi
-
-    source_path="$dsc_dir/$psource"
-    repo_path="$dsc_dir/repo"
-    cp -r $repo_path/.{git,github} $source_path
-    cp -r $repo_path/debian/deepin $source_path/debian
-    cd $current_path
-}
-
 diff_source()
 {
-    current_path=$(pwd)
-    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
+    source dbuilder-source pre "${2}"
 
-    dsc_dir=$save_source_path/$2
-    
-    # 创建文件夹
-    [ ! -d $dsc_dir ] && mkdir -p $dsc_dir
-    cd $dsc_dir
+    repo_path="$psource_path/repo"
+    source_path="$psource_path/${psource}"
 
-    dsc_file=$(basename $(ls ${dsc_dir}/*.dsc))
-    if [ ! -e "$2" ]; then
-        dpkg-source -x $dsc_file "$2"
-    fi
-    cd $2
-    # 回退patch
-    quilt pop -af
-    #删除一些隐藏目录
-    rm -rf .{pc,github,git}
-    cd $current_path
-    source_path="$dsc_dir/$2"
-
-    cd $dsc_dir
     # clone代码
     if [ ! -e "repo" ]; then
-        git clone "$3" repo
+        git clone "$3" $repo_path
     fi
-    repo_path="$dsc_dir/repo"
+
     cp -r $repo_path/.{git,github} $source_path
     cp -r $repo_path/debian/deepin $source_path/debian
-    cd $current_path
+}
+
+diff_source_from_my_repo()
+{
+    init_config
+    version=$(grep '^PACKAGE_VERSION=' "$config_file" | cut -d '=' -f2)
+    if [ -z "$version" ]; then
+        echo "发行版为空，请输入数据 (例: [ buster ] [ buster-backports ] [ bullseye ] [ bookworm ] [ sid ]): "
+        read version
+        sed -i 's|^PACKAGE_VERSION=.*|PACKAGE_VERSION='"${version}"'|' "$config_file"
+    fi
+    url="https://packages.debian.org/${version}/${2}"
+
+    # 调用Python脚本并将结果逐行存储在数组中
+    results=()
+    while IFS= read -r result; do
+        results+=("$result")
+    done < <(python3 crawler $url)
+
+    psource="${results[0]}"
+    repo_url="git@github.com:${github_id}/${psource}.git"
+
+    fork_repo "$@"
+    
+    diff_source "" "$2" "$repo_url"
 }
 
 case "$1" in
     fork)
         fork_repo "$@"
         ;;
-    pre)
-        preproces "$@"
-        ;;
     diff)
         diff_source "$@"
+        ;;
+    diffm)
+        diff_source_from_my_repo "$@"
         ;;
 esac
