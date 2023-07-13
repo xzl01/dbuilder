@@ -43,9 +43,10 @@ diff_source()
     repo_path="$psource_path/repo"
     source_path="$psource_path/${psource}"
 
+    repo_url="git@github.com:$3/${psource}.git"
     # clone代码
     if [ ! -e "repo" ]; then
-        git clone "$3" $repo_path
+        git clone $repo_url $repo_path
     fi
 
     cp -r $repo_path/.{git,github} $source_path
@@ -70,11 +71,10 @@ diff_source_from_my_repo()
     done < <(python3 crawler $url)
 
     psource="${results[0]}"
-    repo_url="git@github.com:${github_id}/${psource}.git"
 
-    fork_repo "$@"
+    fork_repo "" "$psource"
     
-    diff_source "" "$2" "$repo_url"
+    diff_source "" "$2" "$github_id"
 }
 
 case "$1" in
