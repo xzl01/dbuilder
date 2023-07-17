@@ -36,13 +36,10 @@ get_source()
         results+=("$result")
     done < <(python3 crawler $url)
 
-    psource="${results[0]}"
+    export psource="${results[0]}"  # 导出源码名
     description="${results[1]}"
     purl="${results[2]}"
-    psource_path=$save_source_path/$psource
-
-    export $psource # 导出源码名
-    export $psource_path # 到处某个软件源码包的路径
+    export psource_path=$save_source_path/$psource  # 导出软件源码包的路径
 
     mkdir -p $psource_path
     cd $psource_path
@@ -67,29 +64,25 @@ check_build_deps()
 {
     get_source "$@"
 
-    save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
-    version=$(grep '^PACKAGE_VERSION=' "$config_file" | cut -d '=' -f2)
-    dsc_dir=$save_source_path/$psource
-    current_path=$(pwd)
-
-    cd $dsc_dir
-    dsc_file=$(basename $(ls ${dsc_dir}/*.dsc))
+    cd $psource_path
+    dsc_file=$(basename $(ls ${psource_path}/*.dsc))
     if [ ! -e "$psource" ]; then
-        dpkg-source -x $dsc_name "${psource}"
+        dpkg-source -x $dsc_file "${psource}"
     fi
 
     cd $psource
     result=$(sudo apt build-dep .)
-    
+    echo "$result" 
+
     package_name=$(echo "$result" | grep -oP 'Depends: \K\S+')
+    echo "$package_name" >> $dbuilder_path/deps
+
     # 将提取的包名添加到数组中
     package_list=($package_name)
     # 遍历打印数组中的包名
     for package in "${package_list[@]}"; do
         echo "$package"
     done
-
-    cd $current_path
 }
 
 # 进行预处理操作，回退patch，删除一些文件

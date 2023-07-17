@@ -19,7 +19,7 @@ if [ $# -eq 0 ]; then
 fi
 
 # 获取dbuilder指令所在路径
-dbuilder_path="$(dirname "${0}")"
+export dbuilder_path="$(dirname "${0}")"
 # 保存脚本的第一个参数
 dbuilder_command="${1}"
 # 向左移动参数，移除第一个参数
