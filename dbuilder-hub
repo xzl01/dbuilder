@@ -77,6 +77,41 @@ diff_source_from_my_repo()
     diff_source "" "$2" "$github_id"
 }
 
+create_pull_requests()
+{
+    init_config
+
+    # 提取commit信息
+    commit_url="https://api.github.com/repos/$github_id/$2/commits/master"
+
+    commit=$(curl -L \
+                -X GET \
+                -H "Authorization: Bearer $token" \
+                $commit_url \
+            | jq '.commit.message'
+    )
+    echo $commit
+
+    result=$(python3 -c "import json; \
+        commit_list = $commit.split('\n'); \
+        dct = { \
+            'title': commit_list[0] \
+        }; \
+        print(json.dumps(dct)); \
+    ")
+
+    title=$(echo $result | jq .title) 
+    url="https://api.github.com/repos/deepin-community/$2/pulls"
+
+    curl -L \
+        -X POST \
+        -H "Accept: application/vnd.github+json" \
+        -H "Authorization: Bearer $token" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        $url \
+        -d '{"title":'${title}',"body":"Log: ","head":"chenchongbiao:master","base":"master"}'
+}
+
 case "$1" in
     fork)
         fork_repo "$@"
@@ -86,5 +121,8 @@ case "$1" in
         ;;
     diffm)
         diff_source_from_my_repo "$@"
+        ;;
+    cpr)
+        create_pull_requests "$@"
         ;;
 esac
