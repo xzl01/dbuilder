@@ -109,7 +109,7 @@ create_pull_requests()
         -H "Authorization: Bearer $token" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
         $url \
-        -d '{"title":'${title}',"body":"Log: ","head":"chenchongbiao:master","base":"master"}'
+        -d "{\"title\":\"$title\",\"body\":\"Log: \",\"head\":\"chenchongbiao:master\",\"base\":\"master\"}"
 }
 
 case "$1" in
