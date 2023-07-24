@@ -75,7 +75,6 @@ check_build_deps()
     echo "$result" 
 
     package_name=$(echo "$result" | grep -oP 'Depends: \K\S+')
-    echo "$package_name" >> $dbuilder_path/deps
 
     # 将提取的包名添加到数组中
     package_list=($package_name)
