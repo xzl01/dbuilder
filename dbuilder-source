@@ -96,7 +96,7 @@ preproces() {
 	# 回退patch
 	quilt pop -af
 	#删除一些隐藏目录
-	rm -rf .{pc,github,git}
+	rm -rf .{pc,github,git,gitignore}
 }
 
 case $1 in
