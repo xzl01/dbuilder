@@ -72,7 +72,7 @@ check_build_deps() {
 	result=$(echo "n" | sudo apt build-dep .)
 	echo "$result"
 
-	package_name=$(echo "$result" | grep -oP 'Depends: \K\S+')
+	package_name=$(echo "$result" | grep -oP '(Depends|依赖): \K\S+')
 
 	# 将提取的包名添加到数组中
 	package_list=($package_name)
