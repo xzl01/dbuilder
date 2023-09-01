@@ -78,7 +78,7 @@ check_build_deps() {
 	package_list=($package_name)
 	# 遍历打印数组中的包名
 	for package in "${package_list[@]}"; do
-		echo "$package"
+		echo "    ${2} --- $package;"
 	done
 }
 
