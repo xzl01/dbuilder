@@ -49,6 +49,14 @@ diff_source()
         git clone $repo_url $repo_path
     fi
 
+    push_branch=$(cd $dbuilder_path && grep '^PUSH_BRANCH=' "$config_file" | cut -d '=' -f2)
+    cd $repo_path
+    # 如果分支不存在就创建
+    if ! git branch | grep -q $push_branch; then
+        git branch $push_branch
+    fi
+    git switch $push_branch
+
     cp -r $repo_path/.{git,github} $source_path
     cp -r $repo_path/debian/deepin $source_path/debian
 }
