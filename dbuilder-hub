@@ -81,7 +81,7 @@ diff_source_from_my_repo()
     psource="${results[0]}"
 
     fork_repo "" "$psource"
-    
+
     diff_source "" "$2" "$github_id"
 }
 
