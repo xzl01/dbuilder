@@ -3,7 +3,7 @@
 # 尝试使用未设置值的变量，脚本将停止执行
 set -o nounset
 
-config_file="dbuilder.conf"
+config_file="$dbuilder_path/dbuilder.conf"
 github_id=""
 token=""
 
@@ -71,12 +71,22 @@ diff_source_from_my_repo()
         sed -i 's|^PACKAGE_VERSION=.*|PACKAGE_VERSION='"${version}"'|' "$config_file"
     fi
     url="https://packages.debian.org/${version}/${2}"
+	version_list=(bookworm bullseye buster)
+	psource_exist=$(curl $url | grep "psource")
+	if [ -z "$psource_exist" ]; then
+		for version in "${version_list[@]}";
+		do
+			url="https://packages.debian.org/${version}/${2}"
+			psource_exist=$(curl $url | grep "psource")
+			[ ! -z "$psource_exist" ] && break
+		done
+	fi
 
     # 调用Python脚本并将结果逐行存储在数组中
     results=()
     while IFS= read -r result; do
         results+=("$result")
-    done < <(python3 crawler $url)
+    done < <(python3 $dbuilder_path/crawler $url)
 
     psource="${results[0]}"
 

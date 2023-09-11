@@ -4,14 +4,13 @@
 set -o nounset
 
 save_source_path=""
-config_file="dbuilder.conf"
+config_file="$dbuilder_path/dbuilder.conf"
 psource=""
 description=""
 purl=""
 psource_path=""
 
 get_source() {
-	cd $dbuilder_path
 	save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
 	if [ -z "$save_source_path" ]; then
 		echo "代码保存路径为空，请输入数据 (例: /tmp/packages): "
@@ -44,7 +43,7 @@ get_source() {
 	results=()
 	while IFS= read -r result; do
 		results+=("$result")
-	done < <(python3 crawler $url)
+	done < <(python3 $dbuilder_path/crawler $url)
 
 	export psource="${results[0]}" # 导出源码名
 	description="${results[1]}"
