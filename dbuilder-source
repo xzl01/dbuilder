@@ -1,60 +1,54 @@
 #!/bin/bash
 
+
 # 尝试使用未设置值的变量，脚本将停止执行
 set -o nounset
 
-save_source_path=""
-config_file="$dbuilder_path/dbuilder.conf"
-psource=""
-description=""
-purl=""
-psource_path=""
 
 get_source() {
-	save_source_path=$(grep '^SAVE_SOURCE_PATH=' "$config_file" | cut -d '=' -f2)
-	if [ -z "$save_source_path" ]; then
-		echo "代码保存路径为空，请输入数据 (例: /tmp/packages): "
-		read save_source_path
-		sed -i 's|^SAVE_SOURCE_PATH=.*|SAVE_SOURCE_PATH='"${save_source_path}"'|' "$config_file"
-	fi
+    save_source_path=$(jq -r ".package.save_source_path" $config_file)
+    if [[ -z $save_source_path ]]; then
+        echo "代码保存路径为空，请输入数据 (例: /tmp/packages): "
+        read save_source_path
+        tmp=$(mktemp)
+        jq --indent 4 \
+            --arg save_source_path $save_source_path \
+            '.package.save_source_path=$save_source_path' $config_file > $tmp &&
+            mv $tmp $config_file
+    fi
+    # 创建文件夹
+    [ ! -d $save_source_path ] && mkdir -p $save_source_path
 
-	# 创建文件夹
-	[ ! -d $save_source_path ] && mkdir -p $save_source_path
+    version=$(jq -r ".package.version" $config_file)
+    if [[ -z $version ]]; then
+        echo "发行版为空，请输入数据 (例: [ buster ] [ buster-backports ] [ bullseye ] [ bookworm ] [ trixie ] [ sid ]): "
+        read version
+        tmp=$(mktemp)
+        jq --indent 4 --arg version $version '.package.version=$version' $config_file > $tmp && mv $tmp $config_file
+    fi
+    url="https://packages.debian.org/${version}/${2}"
+    version_list=(bookworm bullseye buster)
+    psource_exist=$(curl $url | grep "psource")
+    if [ -z "$psource_exist" ]; then
+        for version in "${version_list[@]}";
+        do
+            url="https://packages.debian.org/${version}/${2}"
+            psource_exist=$(curl $url | grep "psource")
+            [ ! -z "$psource_exist" ] && break
+        done
+    fi
 
-	version=$(grep '^PACKAGE_VERSION=' "$config_file" | cut -d '=' -f2)
-	if [ -z "$version" ]; then
-		echo "发行版为空，请输入数据 (例: [ buster ] [ buster-backports ] [ bullseye ] [ bookworm ] [ sid ]): "
-		read version
-		sed -i 's|^PACKAGE_VERSION=.*|PACKAGE_VERSION='"${version}"'|' "$config_file"
-	fi
-	url="https://packages.debian.org/${version}/${2}"
-	version_list=(bookworm bullseye buster)
-	psource_exist=$(curl $url | grep "psource")
-	if [ -z "$psource_exist" ]; then
-		for version in "${version_list[@]}";
-		do
-			url="https://packages.debian.org/${version}/${2}"
-			psource_exist=$(curl $url | grep "psource")
-			[ ! -z "$psource_exist" ] && break
-		done
-	fi
+    info=$(python3 $dbuilder_path/crawler $url)
+    export psource=$(echo $info | jq -r ".psource") # 导出源码名
+    description=$(echo $info | jq -r ".description")
+    export purl=$(echo $info | jq -r ".purl")
+    export psource_path=$save_source_path/$psource # 导出软件源码包的路径
 
-	# 调用Python脚本并将结果逐行存储在数组中
-	results=()
-	while IFS= read -r result; do
-		results+=("$result")
-	done < <(python3 $dbuilder_path/crawler $url)
+    mkdir -p $psource_path
+    cd $psource_path
+    dget $purl
 
-	export psource="${results[0]}" # 导出源码名
-	description="${results[1]}"
-	purl="${results[2]}"
-	export psource_path=$save_source_path/$psource # 导出软件源码包的路径
-
-	mkdir -p $psource_path
-	cd $psource_path
-	dget $purl
-
-	cat <<EOF
+    cat <<EOF
 
 软件包名: ${2}
 源码包名: $psource
@@ -62,7 +56,7 @@ get_source() {
 dsc下载链接: $purl
 EOF
 
-	cat <<EOF >>/tmp/repos.yml
+    cat <<EOF >>/tmp/repos.yml
   - repo: $psource #main
     group: deepin-sysdev-team
     info: $description
@@ -70,53 +64,53 @@ EOF
 }
 
 check_build_deps() {
-	get_source "$@"
+    get_source "$@"
 
-	cd $psource_path
-	dsc_file=$(basename $(ls ${psource_path}/*.dsc))
-	if [ ! -e "$psource" ]; then
-		dpkg-source -x $dsc_file "${psource}"
-	fi
+    cd $psource_path
+    dsc_file=$(basename $(ls ${psource_path}/*.dsc))
+    if [ ! -e "$psource" ]; then
+        dpkg-source -x $dsc_file "${psource}"
+    fi
 
-	cd $psource
-	result=$(echo "n" | sudo apt build-dep .)
-	echo "$result"
+    cd $psource
+    result=$(echo "n" | sudo apt build-dep .)
+    echo "$result"
 
-	package_name=$(echo "$result" | grep -oP '(Depends|依赖): \K\S+')
+    package_name=$(echo "$result" | grep -oP '(Depends|依赖): \K\S+')
 
-	# 将提取的包名添加到数组中
-	package_list=($package_name)
-	# 遍历打印数组中的包名
-	for package in "${package_list[@]}"; do
-		echo "    ${2} --- $package;"
-	done
+    # 将提取的包名添加到数组中
+    package_list=($package_name)
+    # 遍历打印数组中的包名
+    for package in "${package_list[@]}"; do
+        echo "    ${2} --- $package;"
+    done
 }
 
 # 进行预处理操作，回退patch，删除一些文件
 preproces() {
-	get_source "$@"
+    get_source "$@"
 
-	cd $psource_path
-	dsc_file=$(basename $(ls ${psource_path}/*.dsc))
-	if [ ! -e "$psource" ]; then
-		dpkg-source -x $dsc_file "$psource"
-	fi
-	# 进入解压后的源代码包
-	cd $psource
-	# 回退patch
-	quilt pop -af
-	#删除一些隐藏目录
-	rm -rf .{pc,github,git,gitignore}
+    cd $psource_path
+    dsc_file=$(basename $(ls ${psource_path}/*.dsc))
+    if [ ! -e "$psource" ]; then
+        dpkg-source -x $dsc_file "$psource"
+    fi
+    # 进入解压后的源代码包
+    cd $psource
+    # 回退patch
+    quilt pop -af
+    #删除一些隐藏目录
+    rm -rf .{pc,github,git,gitignore}
 }
 
 case $1 in
 get)
-	get_source "$@"
-	;;
+    get_source "$@"
+    ;;
 deps)
-	check_build_deps "$@"
-	;;
+    check_build_deps "$@"
+    ;;
 pre)
-	preproces "$@"
-	;;
+    preproces "$@"
+    ;;
 esac

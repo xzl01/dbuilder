@@ -10,8 +10,7 @@ headers = {
 }
 
 
-data = {}
-# 如果数据库没有数据，就进行爬取
+# 获取url
 url = sys.argv[1]
 
 response = requests.get(url=url, headers=headers)
@@ -24,6 +23,9 @@ try:
 except IndexError as e:
     purl = ""
 
-print(psource)
-print(description)
-print(purl)
+data = {
+    "psource": psource,
+    "description": description,
+    "purl": purl
+}
+print(json.dumps(data))

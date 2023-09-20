@@ -3,18 +3,17 @@
 # 尝试使用未设置值的变量，脚本将停止执行
 set -o nounset
 
-config_file="$dbuilder_path/dbuilder.conf"
 github_id=""
 token=""
 
 init_config()
 {
-    github_id=$(grep '^GITHUB_ID=' "$config_file" | cut -d '=' -f2)
-
-    if [ -z "$github_id" ]; then
+    github_id=$(jq -r ".github.id" $config_file)
+    if [[ -z $github_id ]]; then
         echo "Github ID为，请输入数据: "
         read github_id
-        sed -i 's|^GITHUB_ID=.*|GITHUB_ID='"${github_id}"'|' "$config_file"
+        tmp=$(mktemp)
+        jq --indent 4 --arg github_id $github_id '.github.id=$github_id' $config_file > $tmp && mv $tmp $config_file
     fi
 
     if [ -e "/tmp/github_token" ]; then
@@ -22,7 +21,7 @@ init_config()
     else
         echo "Github Token为空，请输入数据: "
         read token
-        echo "$token" >> /tmp/github_token
+        echo "$token" > /tmp/github_token
     fi
 }
 
@@ -49,7 +48,13 @@ diff_source()
         git clone $repo_url $repo_path
     fi
 
-    push_branch=$(cd $dbuilder_path && grep '^PUSH_BRANCH=' "$config_file" | cut -d '=' -f2)
+    push_branch=$(jq -r ".github.push_branch" $config_file)
+    if [[ -z $push_branch ]]; then
+        echo "Github 仓库推送分支为空: "
+        read push_branch
+        tmp=$(mktemp)
+        jq --indent 4 --arg push_branch $push_branch '.github.push_branch=$push_branch' $config_file > $tmp && mv $tmp $config_file
+    fi
     cd $repo_path
     # 如果分支不存在就创建
     if ! git branch | grep -q $push_branch; then
@@ -64,32 +69,7 @@ diff_source()
 diff_source_from_my_repo()
 {
     init_config
-    version=$(grep '^PACKAGE_VERSION=' "$config_file" | cut -d '=' -f2)
-    if [ -z "$version" ]; then
-        echo "发行版为空，请输入数据 (例: [ buster ] [ buster-backports ] [ bullseye ] [ bookworm ] [ sid ]): "
-        read version
-        sed -i 's|^PACKAGE_VERSION=.*|PACKAGE_VERSION='"${version}"'|' "$config_file"
-    fi
-    url="https://packages.debian.org/${version}/${2}"
-	version_list=(bookworm bullseye buster)
-	psource_exist=$(curl $url | grep "psource")
-	if [ -z "$psource_exist" ]; then
-		for version in "${version_list[@]}";
-		do
-			url="https://packages.debian.org/${version}/${2}"
-			psource_exist=$(curl $url | grep "psource")
-			[ ! -z "$psource_exist" ] && break
-		done
-	fi
-
-    # 调用Python脚本并将结果逐行存储在数组中
-    results=()
-    while IFS= read -r result; do
-        results+=("$result")
-    done < <(python3 $dbuilder_path/crawler $url)
-
-    psource="${results[0]}"
-
+    source dbuilder-source get "${2}"
     fork_repo "" "$psource"
 
     diff_source "" "$2" "$github_id"

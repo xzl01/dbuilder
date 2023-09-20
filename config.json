@@ -1,0 +1,16 @@
+{
+    "package": {
+        "save_source_path": "/home/bluesky/packages",
+        "version": "trixie"
+    },
+    "github": {
+        "id": "chenchongbiao",
+        "push_branch": "master"
+    },
+    "obs": {
+        "project": {
+            "my": "home:chenchongbiao:rust",
+            "rust": "deepin:GPL:Rust"
+        }
+    }
+}

@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -o nounset
+
+alias osc='env -u http_proxy -u https_proxy osc'  # 定义 重定义 osc 不使用代理。
+# 开启alias扩展功能
+shopt -s expand_aliases
+
+
+commit_package()
+{
+    package_name=${2}
+    source dbuilder-source get "$package_name"
+
+    config_file="$dbuilder_path/config.json"  # 临时使用，在 dbuilder 已经 export config_file 了，后续修改
+    project=$(jq -r ".obs.project.rust" $config_file)
+    is_exist=$(osc list $project | grep "$psource")
+    echo $is_exist
+    if [[ -n "$is_exist" ]];
+    then
+        echo "$project 存在 $psource 仓库"
+        return 1
+    fi
+
+    my_project=$(jq -r ".obs.project.my" $config_file)
+    home_path=$psource_path/$my_project
+    # 在 package 目录下创建 obs 的工作目录
+    mkdir -p $home_path
+    cd $home_path
+
+    # 如果不存在则初始化项目
+    [[ ! -d ".osc" ]] && osc init $my_project
+    [[ ! -d "$psource" ]] && osc mkpac $psource
+
+    obs_package_path=$home_path/$psource
+    cd $obs_package_path && dget $purl
+    files=$(ls $obs_package_path)
+    osc add $files
+    osc commit -m "init package"
+
+    request_id=$(osc submitrequest $my_project $psource \
+        $project $psource -m "commit" --yes --cleanup | grep -o '[0-9]\+')
+    echo "提交请求编号为 $request_id"
+    # osc request accept $request_id --message=“Reviewed OK.”  # 先不直接accept请求
+}
+
+
+case "$1" in
+    copac)
+        commit_package "$@"
+        ;;
+esac
