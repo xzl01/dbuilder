@@ -35,6 +35,15 @@ fork_repo()
 
 }
 
+delete_repo()
+{
+    init_config
+    url="https://api.github.com/repos/$github_id/$2"
+    curl -X DELETE \
+        -H "Authorization: token $token" \
+        $url
+}
+
 diff_source()
 {
     source dbuilder-source pre "${2}"
@@ -79,6 +88,9 @@ diff_source_from_my_repo()
 case "$1" in
     fork)
         fork_repo "$@"
+        ;;
+    delete)
+        delete_repo "$@"
         ;;
     diff)
         diff_source "$@"
