@@ -6,10 +6,33 @@ set -o errexit
 set -o nounset
 
 show_help() {
-	cat << EOF
-Choose one of the available commands:
+  # Define text formatting variables
+  bold=$(tput bold)
+  normal=$(tput sgr0)
+  yellow=$(tput setaf 3)
+  cyan=$(tput setaf 6)
 
-EOF
+  # Print the help message with echo
+  echo "${bold}Choose one of the available commands:${normal}"
+
+  echo "dbuilder source <command> <packages>:"
+  echo "    ${cyan}get <packages>${normal}: download from debian.org (or mirrors.163.com)"
+  echo "        ${yellow}example:${normal} dbuilder source get vim"
+  echo "    ${cyan}deps <packages>${normal}: Download from debian.org (or mirrors.163.com) and list its dependencies"
+  echo "        ${yellow}example:${normal} dbuilder source deps vim"
+  echo "    ${cyan}pre <packages>${normal}: Download from debian.org (or mirrors.163.com) and prepare the source to submit to deepin"
+  echo "        ${yellow}example:${normal} dbuilder source pre vim"
+
+  echo "dbuilder hub <command> <packages>:"
+  echo "    you need write your github id and token to config.json"
+  echo "    ${cyan}fork <packages>${normal}: fork package from deepin-community"
+  echo "        ${yellow}example:${normal} dbuilder hub fork vim"
+  echo "    ${cyan}delete <packages>${normal}: delete package from your github"
+  echo "        ${yellow}example:${normal} dbuilder hub delete vim"
+  echo "    ${cyan}diff <packages>${normal}: diff package from deepin-community"
+  echo "        ${yellow}example:${normal} dbuilder hub diff vim"
+  echo "    ${cyan}diffm <packages>${normal}: diff source from my repo"
+  echo "        ${yellow}example:${normal} dbuilder hub diffm vim"
 }
 
 # 没有添加参数时展示执行help,获取命令列表
