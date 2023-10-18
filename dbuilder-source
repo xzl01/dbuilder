@@ -40,7 +40,7 @@ get_source() {
 
     info=$(python3 $dbuilder_path/crawler $url)
     export psource=$(echo $info | jq -r ".psource") # 导出源码名
-    description=$(echo $info | jq -r ".description")
+    export description=$(echo $info | jq -r ".description")
     export purl=$(echo $info | jq -r ".purl")
     export psource_path=$save_source_path/$psource # 导出软件源码包的路径
 
@@ -91,7 +91,7 @@ preproces() {
     get_source "$@"
 
     cd $psource_path
-    dsc_file=$(basename $(ls ${psource_path}/*.dsc))
+    export dsc_file=$(ls ${psource_path}/*.dsc)
     if [ ! -e "$psource" ]; then
         dpkg-source -x $dsc_file "$psource"
     fi

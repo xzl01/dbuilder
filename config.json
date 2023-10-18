@@ -4,8 +4,8 @@
         "version": "trixie"
     },
     "github": {
-        "id": "chenchongbiao",
-        "push_branch": "master"
+        "branch": "topic-rsyslog",
+        "issue": "https://github.com/linuxdeepin/developer-center/issues/5914"
     },
     "obs": {
         "project": {

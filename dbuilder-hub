@@ -3,76 +3,116 @@
 # 尝试使用未设置值的变量，脚本将停止执行
 set -o nounset
 
-github_id=""
-token=""
+org="deepin-community"
 
 init_config()
 {
-    github_id=$(jq -r ".github.id" $config_file)
-    if [[ -z $github_id ]]; then
-        echo "Github ID为，请输入数据: "
-        read github_id
-        tmp=$(mktemp)
-        jq --indent 4 --arg github_id $github_id '.github.id=$github_id' $config_file > $tmp && mv $tmp $config_file
+    # github_id=$(jq -r ".github.id" $config_file)
+    # if [[ -z $github_id ]]; then
+    #     echo "Github ID为，请输入数据: "
+    #     read github_id
+    #     tmp=$(mktemp)
+    #     jq --indent 4 --arg github_id $github_id '.github.id=$github_id' $config_file > $tmp && mv $tmp $config_file
+    # fi
+
+    # if [ -e "/tmp/github_token" ]; then
+    #     token=$(cat "/tmp/github_token")
+    # else
+    #     echo "Github Token为空，请输入数据: "
+    #     read token
+    #     echo "$token" > /tmp/github_token
+    # fi
+    # 获取gh auth status的输出
+    output=$(gh auth status 2>&1)
+
+    # 检查输出中是否包含You are not logged
+    if [[ $output == *"You are not logged"* ]]; then
+        # 如果包含，说明没有登录，如果不包含，说明已经登录
+        echo "你没有登录GitHub CLI"
+        gh auth login
     fi
-
-    if [ -e "/tmp/github_token" ]; then
-        token=$(cat "/tmp/github_token")
-    else
-        echo "Github Token为空，请输入数据: "
-        read token
-        echo "$token" > /tmp/github_token
-    fi
 }
 
-fork_repo()
+branch()
 {
-    init_config
-    url="https://api.github.com/repos/deepin-community/$2/forks"
-    curl -X POST \
-        -H "Authorization: token $token" \
-        $url
-
+    branch="topic-$2"
+    tmp=$(mktemp)
+    jq --indent 4 --arg branch $branch '.github.branch=$branch' $config_file > $tmp && mv $tmp $config_file
 }
 
-delete_repo()
+issue()
 {
-    init_config
-    url="https://api.github.com/repos/$github_id/$2"
-    curl -X DELETE \
-        -H "Authorization: token $token" \
-        $url
+    issue="$2"
+    tmp=$(mktemp)
+    jq --indent 4 --arg issue $issue '.github.issue=$issue' $config_file > $tmp && mv $tmp $config_file
 }
 
-diff_source()
+push_source()
 {
     source dbuilder-source pre "${2}"
 
     repo_path="$psource_path/repo"
     source_path="$psource_path/${psource}"
 
-    repo_url="git@github.com:$3/${psource}.git"
+    cd $psource_path
     # clone代码
     if [ ! -e "repo" ]; then
-        git clone $repo_url $repo_path
+        gh repo fork --clone "$org/$psource" -- repo
+        cd $repo_path && gh repo set-default "$org/$psource"
+        git pull upstream master --rebase
     fi
-
-    push_branch=$(jq -r ".github.push_branch" $config_file)
-    if [[ -z $push_branch ]]; then
-        echo "Github 仓库推送分支为空: "
-        read push_branch
-        tmp=$(mktemp)
-        jq --indent 4 --arg push_branch $push_branch '.github.push_branch=$push_branch' $config_file > $tmp && mv $tmp $config_file
-    fi
-    cd $repo_path
-    # 如果分支不存在就创建
-    if ! git branch | grep -q $push_branch; then
-        git branch $push_branch
-    fi
-    git switch $push_branch
-
     cp -r $repo_path/.{git,github} $source_path
     cp -r $repo_path/debian/deepin $source_path/debian
+
+    branch=$(jq -r ".github.branch" $config_file)
+    if [[ -z $branch ]]; then
+        echo "Github 仓库推送分支为空: "
+        read branch
+        tmp=$(mktemp)
+        jq --indent 4 --arg branch $branch '.github.branch=$branch' $config_file > $tmp && mv $tmp $config_file
+    fi
+
+    issue=$(jq -r ".github.issue" $config_file)
+    if [[ -z $issue ]]; then
+        echo "Github Issue 为空: "
+        read issue
+        tmp=$(mktemp)
+        jq --indent 4 --arg issue $issue '.github.issue=$issue' $config_file > $tmp && mv $tmp $config_file
+    fi
+
+    source_version=$(cat "$dsc_file" | grep -oP '^Version: \S+$' | cut -d ' ' -f 2)
+    if [[ "$source_version" == *-* ]] ; then
+        upstream_version=$(echo "$source_version" | rev | cut -d '-' -f 2- | rev)
+    else
+        upstream_version="$source_version"
+    fi
+    upstream_version=$(echo "$upstream_version" | tr ':~' '%_')
+
+    cd $source_path
+    # 如果分支不存在就创建
+    if ! git branch | grep -q $branch; then
+        git branch $branch
+    fi
+    git switch $branch
+
+    if [ -e "$source_path/debian/patches" ]; then
+        git add -fN debian/patches
+        if git --no-pager diff debian/patches >/dev/null ; then
+                read -p '请查看一下 patches: '
+                git add -f debian/patches
+        fi
+    fi
+
+    git add -f .
+    git commit -m "feat: update $psource to $upstream_version
+
+$description
+
+Issue: $issue
+Log: update repo"
+
+    # git push -f --set-upstream origin "$branch"
+    # gh pr create -f
 }
 
 diff_source_from_my_repo()
@@ -86,16 +126,13 @@ diff_source_from_my_repo()
 
 
 case "$1" in
-    fork)
-        fork_repo "$@"
+    branch)
+        branch "$@"
         ;;
-    delete)
-        delete_repo "$@"
+    issue)
+        issue "$@"
         ;;
-    diff)
-        diff_source "$@"
-        ;;
-    diffm)
-        diff_source_from_my_repo "$@"
+    push)
+        push_source "$@"
         ;;
 esac
