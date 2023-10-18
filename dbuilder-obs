@@ -38,15 +38,25 @@ commit_package()
     osc add $files
     osc commit -m "init package"
 
-    request_id=$(osc submitrequest $my_project $psource \
-        $project $psource -m "commit" --yes --cleanup | grep -o '[0-9]\+')
-    echo "提交请求编号为 $request_id"
+    # request_id=$(osc submitrequest $my_project $psource \
+        # $project $psource -m "commit" --yes --cleanup | grep -o '[0-9]\+')
+    # echo "提交请求编号为 $request_id"
     # osc request accept $request_id --message=“Reviewed OK.”  # 先不直接accept请求
+}
+
+project()
+{
+    project="$2"
+    tmp=$(mktemp)
+    jq --indent 4 --arg project $project '.obs.project.my=$project' $config_file > $tmp && mv $tmp $config_file
 }
 
 
 case "$1" in
     copac)
         commit_package "$@"
+        ;;
+    project)
+        project "$@"
         ;;
 esac

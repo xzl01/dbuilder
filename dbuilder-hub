@@ -111,8 +111,8 @@ $description
 Issue: $issue
 Log: update repo"
 
-    # git push -f --set-upstream origin "$branch"
-    # gh pr create -f
+    git push -f --set-upstream origin "$branch"
+    gh pr create -f
 }
 
 diff_source_from_my_repo()

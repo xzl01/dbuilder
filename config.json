@@ -9,7 +9,7 @@
     },
     "obs": {
         "project": {
-            "my": "home:chenchongbiao:rust",
+            "my": "home:chenchongbiao:golang",
             "rust": "deepin:GPL:Rust"
         }
     }
