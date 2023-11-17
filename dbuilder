@@ -41,8 +41,12 @@ if [ $# -eq 0 ]; then
     exit
 fi
 
-# 获取dbuilder指令所在路径
-export dbuilder_path="$(dirname "${0}")"
+# ${BASH_SOURCE[0]}：在非交互式shell中，特殊参数BASH_SOURCE表示当前正在执行的脚本的绝对路径名。在这里使用的是BASH_SOURCE[0]，表示第一个参数，即当前执行的脚本文件的位置。
+# dirname ${BASH_SOURCE[0]}：返回给定路径中的目录部分，也就是返回脚本文件所在的目录。
+# realpath --no-symlinks <dir>：命令realpath可以给出文件或目录的标准绝对路径名，并且符号连接也会被解析为它们指向的实际位置。
+# 这里使用了--no-symlinks选项，使得不会跟随符号链接；<dir>的部分替换为上一步得到的目录名称。
+# 获取当前执行的脚本文件所在的目录的真实路径名
+export dbuilder_path="$(realpath --no-symlinks "$(dirname "${BASH_SOURCE[0]}")")"
 export config_file="$dbuilder_path/config.json"
 # 保存脚本的第一个参数
 dbuilder_command="${1}"
