@@ -47,7 +47,7 @@ issue()
     jq --indent 4 --arg issue $issue '.github.issue=$issue' $config_file > $tmp && mv $tmp $config_file
 }
 
-push_source()
+diff_source()
 {
     source dbuilder-source pre "${2}"
 
@@ -63,22 +63,18 @@ push_source()
     fi
     cp -r $repo_path/.{git,github} $source_path
     cp -r $repo_path/debian/deepin $source_path/debian
+}
 
+push_source()
+{
+    diff_source "" "$2"
     branch=$(jq -r ".github.branch" $config_file)
-    if [[ -z $branch ]]; then
-        echo "Github 仓库推送分支为空: "
-        read branch
-        tmp=$(mktemp)
-        jq --indent 4 --arg branch $branch '.github.branch=$branch' $config_file > $tmp && mv $tmp $config_file
+    if [[ $branch == "topic-none" ]]; then
+        echo "Github 仓库推送分支为空(默认使用master): "
+        branch="master"
     fi
 
     issue=$(jq -r ".github.issue" $config_file)
-    if [[ -z $issue ]]; then
-        echo "Github Issue 为空: "
-        read issue
-        tmp=$(mktemp)
-        jq --indent 4 --arg issue $issue '.github.issue=$issue' $config_file > $tmp && mv $tmp $config_file
-    fi
 
     source_version=$(cat "$dsc_file" | grep -oP '^Version: \S+$' | cut -d ' ' -f 2)
     if [[ "$source_version" == *-* ]] ; then
@@ -104,12 +100,13 @@ push_source()
     fi
 
     git add -f .
-    git commit -m "feat: update $psource to $upstream_version
 
-$description
-
-Issue: $issue
-Log: update repo"
+    message="feat: update $psource to $upstream_version\n\n$description\n"
+    if [ ! "$issue" == "none" ]; then
+        message="$message\nIssue: $issue"
+    fi
+    message="$message\nLog: update repo"
+    echo -e "$message" | git commit --file=-
 
     git push -f --set-upstream origin "$branch"
     gh pr create -f
@@ -131,6 +128,9 @@ case "$1" in
         ;;
     issue)
         issue "$@"
+        ;;
+    diff)
+        diff_source "$@"
         ;;
     push)
         push_source "$@"

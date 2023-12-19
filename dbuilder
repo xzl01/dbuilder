@@ -63,6 +63,9 @@ case "${dbuilder_command}" in
     obs)
         "${dbuilder_path}/dbuilder-obs" "$@"
         ;;
+    config)
+        jq . $config_file
+        ;;
     help | --help | -h)
         show_help
         exit 0
