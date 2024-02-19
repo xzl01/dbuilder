@@ -56,11 +56,17 @@ get_source() {
 dsc下载链接: $purl
 EOF
 
-    cat <<EOF >>/tmp/repos.yml
+    # 尝试获取仓库信息
+    gh repo view deepin-community/$psource &>/dev/null
+    if [ $? -ne 0 ]; then
+        # 仓库不存在时执行的操作
+        cat <<EOF >>/tmp/repos.yml
   - repo: $psource #main
     group: deepin-sysdev-team
     info: $description
+
 EOF
+    fi
 }
 
 check_build_deps() {
