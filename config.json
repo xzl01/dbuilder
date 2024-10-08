@@ -1,11 +1,11 @@
 {
     "package": {
-        "save_source_path": "/home/bluesky/packages",
-        "version": "trixie"
+        "save_source_path": "/home/xzl/work",
+        "version": "sid"
     },
     "github": {
-        "branch": "topic-rsyslog",
-        "issue": "https://github.com/linuxdeepin/developer-center/issues/5914"
+        "branch": "topic-v25stage4",
+        "issue": "https://github.com/deepin-community/sig-deepin-sysdev-team/issues/552"
     },
     "obs": {
         "project": {

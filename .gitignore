@@ -1,2 +1,4 @@
 data.json
 __pycache__
+venv
+.log

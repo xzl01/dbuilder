@@ -107,6 +107,16 @@ preproces() {
     quilt pop -af
     #删除一些隐藏目录
     rm -rf .{pc,github,git,gitignore}
+    found_files=$(find debian -type f -name "*t64*")
+    if [ -n "$found_files" ]; then
+      echo "找到以下含有 't64' 的文件："
+      echo "$found_files"
+      read -p "按任意键继续执行..." -n 1 -r
+      echo
+    else
+      echo "没有找到含有 't64' 的文件。"
+    fi
+
 }
 
 case $1 in
